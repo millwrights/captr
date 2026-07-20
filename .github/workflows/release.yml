@@ -1,0 +1,43 @@
+name: Release
+
+# Manual-only, so it doesn't race with a local `make release` (which also
+# publishes on tag push). Run it from the Actions tab when you want CI to build
+# and publish a release instead of doing it locally.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v0.1.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Build (make)
+        run: make
+
+      - name: Zip app bundle
+        run: |
+          ditto -c -k --keepParent "build/Captr.app" "Captr-${{ inputs.tag }}.zip"
+
+      # NOTE: Code-signing and notarization are not performed here yet.
+      # Once an Apple Developer ID is available, add the required secrets
+      # (signing certificate, APPLE_ID, APP_PASSWORD, TEAM_ID) and a
+      # signing/notarization step before the release is published.
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag }}
+          files: Captr-${{ inputs.tag }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

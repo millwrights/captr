@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Captr ships as a Developer ID app (not sandboxed). Screen Recording,
+	     Accessibility, and Microphone access are granted at runtime via TCC
+	     prompts, not entitlements. The hardened runtime is enabled at sign time
+	     (make notarize). This file is a placeholder for any future entitlements. -->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<false/>
+</dict>
+</plist>

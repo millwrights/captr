@@ -1,0 +1,25 @@
+# Build output
+build/
+DerivedData/
+*.o
+*.dSYM/
+
+# macOS
+.DS_Store
+
+# Xcode (if opened there later)
+*.xcworkspace
+xcuserdata/
+*.xcuserstate
+
+# Signing / secrets — never commit
+*.p12
+*.cer
+*.provisionprofile
+.env
+.signing-identity
+notarization-*.zip
+
+# Editor
+.vscode/
+*.swp

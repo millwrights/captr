@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build (make)
+        run: make
+
+      - name: Assert app binary exists
+        run: |
+          if [ ! -x "build/Captr.app/Contents/MacOS/Captr" ]; then
+            echo "::error::build/Captr.app/Contents/MacOS/Captr was not produced"
+            exit 1
+          fi
+          echo "Built build/Captr.app/Contents/MacOS/Captr"
+
+      - name: Unit tests
+        run: make test
+
+      - name: Clean
+        run: make clean
+
+  lint:
+    name: Lint (soft)
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: clang syntax check (soft)
+        run: |
+          echo "Running soft clang syntax check..."
+          clang -fsyntax-only -fobjc-arc -fmodules -mmacosx-version-min=13.0 -x objective-c src/*.m || true
+          echo "Soft lint complete (non-blocking)."
