@@ -136,8 +136,8 @@
 #pragma mark - Controller
 
 @interface CPOverlayController () <CPOverlayViewDelegate>
-@property (nonatomic, strong) CPOverlayWindow *window;
-@property (nonatomic, strong) CPOverlayView *view;
+@property (nonatomic, strong) NSArray<CPOverlayWindow *> *windows; // one per display
+@property (nonatomic, strong) NSArray<CPOverlayView *> *views;
 @property (nonatomic, copy) CPOverlayCompletion completion;
 @property (nonatomic, strong) id monitor;         // local event monitor for mouse-moved
 @property (nonatomic, strong) CPOverlayController *selfRef; // keep alive during interaction
@@ -149,28 +149,47 @@
     self.completion = completion;
     self.selfRef = self;
 
-    NSScreen *screen = [NSScreen mainScreen];
-    NSRect frame = screen.frame;
+    // Cover every display with its own overlay so capture starts wherever the
+    // cursor is — not on whichever screen happens to hold the key window (e.g. a
+    // previously-opened editor). Keyboard focus goes to the screen under the
+    // cursor so Esc works and the interaction feels local.
+    NSPoint mouse = [NSEvent mouseLocation];
+    NSMutableArray<CPOverlayWindow *> *windows = [NSMutableArray array];
+    NSMutableArray<CPOverlayView *> *views = [NSMutableArray array];
+    CPOverlayView *cursorView = nil;
 
-    self.window = [[CPOverlayWindow alloc] initWithContentRect:frame
-                                                     styleMask:NSWindowStyleMaskBorderless
-                                                       backing:NSBackingStoreBuffered
-                                                         defer:NO];
-    self.window.opaque = NO;
-    self.window.backgroundColor = [NSColor clearColor];
-    self.window.level = NSScreenSaverWindowLevel;
-    self.window.ignoresMouseEvents = NO;
-    [self.window setAcceptsMouseMovedEvents:YES];
+    for (NSScreen *screen in [NSScreen screens]) {
+        NSRect frame = screen.frame;
+        CPOverlayWindow *win = [[CPOverlayWindow alloc] initWithContentRect:frame
+                                                                 styleMask:NSWindowStyleMaskBorderless
+                                                                   backing:NSBackingStoreBuffered
+                                                                     defer:NO];
+        win.opaque = NO;
+        win.backgroundColor = [NSColor clearColor];
+        win.level = NSScreenSaverWindowLevel;
+        win.ignoresMouseEvents = NO;
+        [win setAcceptsMouseMovedEvents:YES];
 
-    self.view = [[CPOverlayView alloc] initWithFrame:frame];
-    self.view.delegate = self;
-    self.view.mode = mode;
-    self.view.screenOrigin = frame.origin;
-    self.window.contentView = self.view;
+        CPOverlayView *view = [[CPOverlayView alloc] initWithFrame:(NSRect){NSZeroPoint, frame.size}];
+        view.delegate = self;
+        view.mode = mode;
+        view.screenOrigin = frame.origin;
+        win.contentView = view;
+
+        [windows addObject:win];
+        [views addObject:view];
+        if (NSPointInRect(mouse, frame)) cursorView = view;
+    }
+
+    self.windows = windows;
+    self.views = views;
 
     [NSApp activateIgnoringOtherApps:YES];
-    [self.window makeKeyAndOrderFront:nil];
-    [self.window makeFirstResponder:self.view];
+    for (CPOverlayWindow *win in windows) [win orderFront:nil];
+
+    if (!cursorView) cursorView = views.firstObject;
+    [cursorView.window makeKeyAndOrderFront:nil];
+    [cursorView.window makeFirstResponder:cursorView];
     [[NSCursor crosshairCursor] push];
 
     if (mode == CPOverlayModeWindow) {
@@ -184,11 +203,16 @@
     }
 }
 
+- (void)hideOverlays {
+    for (CPOverlayWindow *win in self.windows) [win orderOut:nil];
+}
+
 - (void)tearDown {
     [[NSCursor crosshairCursor] pop];
     if (self.monitor) { [NSEvent removeMonitor:self.monitor]; self.monitor = nil; }
-    [self.window orderOut:nil];
-    self.window = nil;
+    [self hideOverlays];
+    self.windows = nil;
+    self.views = nil;
 }
 
 - (void)finishWithImage:(CGImageRef)image {
@@ -228,24 +252,28 @@
     }
     if (list) CFRelease(list);
 
-    self.view.hoverWindowID = found;
-    if (found != kCGNullWindowID) {
-        // Convert CG bounds → view coords (view fills the primary screen).
-        NSRect r = NSMakeRect(foundBounds.origin.x,
-                              primaryHeight - (foundBounds.origin.y + foundBounds.size.height),
-                              foundBounds.size.width, foundBounds.size.height);
-        r.origin.x -= self.view.screenOrigin.x;
-        r.origin.y -= self.view.screenOrigin.y;
-        self.view.windowHighlight = r;
+    // Global Cocoa rect (y-up) of the hovered window; each per-display view
+    // converts it into its own coordinates and draws the portion on its screen.
+    NSRect globalHighlight = NSMakeRect(foundBounds.origin.x,
+                                        primaryHeight - (foundBounds.origin.y + foundBounds.size.height),
+                                        foundBounds.size.width, foundBounds.size.height);
+    for (CPOverlayView *view in self.views) {
+        view.hoverWindowID = found;
+        if (found != kCGNullWindowID) {
+            NSRect r = globalHighlight;
+            r.origin.x -= view.screenOrigin.x;
+            r.origin.y -= view.screenOrigin.y;
+            view.windowHighlight = r;
+        }
+        [view setNeedsDisplay:YES];
     }
-    [self.view setNeedsDisplay:YES];
 }
 
 #pragma mark CPOverlayViewDelegate
 
 - (void)overlayViewDidSelectRegion:(NSRect)rectInScreen {
-    // Hide the overlay first, then capture after it's off-screen.
-    [self.window orderOut:nil];
+    // Hide the overlays first, then capture after they're off-screen.
+    [self hideOverlays];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.06 * NSEC_PER_SEC)),
                    dispatch_get_main_queue(), ^{
         CGImageRef img = [CPCaptureEngine captureCocoaRect:rectInScreen];
@@ -254,7 +282,7 @@
 }
 
 - (void)overlayViewDidSelectWindow:(CGWindowID)windowID {
-    [self.window orderOut:nil];
+    [self hideOverlays];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.06 * NSEC_PER_SEC)),
                    dispatch_get_main_queue(), ^{
         CGImageRef img = [CPCaptureEngine captureWindowID:windowID];

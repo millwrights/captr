@@ -1,7 +1,7 @@
 # Captr — build a macOS .app bundle with clang (no Xcode project required).
 
 APP        := Captr
-VERSION    := 0.1.0
+VERSION    := 0.2.0
 BUNDLE     := build/$(APP).app
 CONTENTS   := $(BUNDLE)/Contents
 BINDIR     := $(CONTENTS)/MacOS

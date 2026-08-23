@@ -29,8 +29,21 @@ CGRect CPFlipRectForCapture(CGRect cocoaRect, CGFloat primaryScreenHeight) {
 }
 
 + (CGImageRef)captureFullScreen {
+    return CGDisplayCreateImage([self displayUnderCursor]); // top-left origin already
+}
+
+// The display the cursor is currently on (falls back to the primary display).
++ (CGDirectDisplayID)displayUnderCursor {
+    NSPoint mouse = [NSEvent mouseLocation]; // Cocoa: y-up from primary bottom-left
+    CGFloat primaryHeight = NSHeight([[NSScreen screens] firstObject].frame);
+    CGPoint cgPoint = CGPointMake(mouse.x, primaryHeight - mouse.y);
+
     CGDirectDisplayID display = CGMainDisplayID();
-    return CGDisplayCreateImage(display); // top-left origin already
+    uint32_t count = 0;
+    if (CGGetDisplaysWithPoint(cgPoint, 1, &display, &count) == kCGErrorSuccess && count > 0) {
+        return display;
+    }
+    return CGMainDisplayID();
 }
 
 + (CGImageRef)captureCocoaRect:(CGRect)cocoaRect {
