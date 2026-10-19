@@ -1,11 +1,6 @@
 cask "captr" do
-  version "0.1.0"
-
-  # TODO: Pin this to the real release artifact's checksum once a signed
-  # release exists, e.g.:
-  #   sha256 "abc123...def"
-  # Compute it with: shasum -a 256 Captr-v0.1.0.zip
-  sha256 :no_check
+  version "0.3.0"
+  sha256 "d41f5c415271a75bf735899a8d6c4bb99765c79e44a0a9e9d46c5410b0db0a72"
 
   url "https://github.com/millwrights/captr/releases/download/v#{version}/Captr-v#{version}.zip"
   name "Captr"
