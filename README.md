@@ -37,6 +37,12 @@ access** whatsoever.
 - ↩️ Full **undo/redo**, color + thickness pickers
 - 📋 **Copy** or 💾 **Save** the flattened result at full capture resolution
 
+**Clipboard history** *(v0.3 — available now)*
+- 🗂 Every image Captr copies is kept in a history — reopen it from the menu bar
+  (**Clipboard History**) or the floating panel (`⇧⌘I`, rebindable in Settings)
+- ↩ Pick an image to put it back on the clipboard; history is in-memory only and
+  clears when Captr quits
+
 **Coming next** *(see [`docs/ROADMAP.md`](docs/ROADMAP.md))*
 - 📌 Pin screenshots as always-on-top floating windows
 - ✂️ Crop while annotating; drag-resize handles

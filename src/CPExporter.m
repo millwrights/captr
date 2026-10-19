@@ -1,5 +1,6 @@
 // Captr — SPDX-License-Identifier: MIT OR Apache-2.0
 #import "CPExporter.h"
+#import "CPClipboardHistory.h"
 
 NSString *CPScreenshotFileName(NSDate *date, NSString *extension) {
     NSDateFormatter *fmt = [[NSDateFormatter alloc] init];
@@ -20,6 +21,7 @@ NSString *CPScreenshotFileName(NSDate *date, NSString *extension) {
     NSPasteboard *pb = [NSPasteboard generalPasteboard];
     [pb clearContents];
     [pb setData:tiff forType:NSPasteboardTypeTIFF];
+    [[CPClipboardHistory sharedHistory] addImage:image];
 }
 
 + (NSData *)dataForImage:(CGImageRef)image format:(NSString *)format {

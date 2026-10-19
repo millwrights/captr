@@ -1,7 +1,7 @@
 # Captr — build a macOS .app bundle with clang (no Xcode project required).
 
 APP        := Captr
-VERSION    := 0.2.0
+VERSION    := 0.3.0
 BUNDLE     := build/$(APP).app
 CONTENTS   := $(BUNDLE)/Contents
 BINDIR     := $(CONTENTS)/MacOS
@@ -36,7 +36,8 @@ DIST_ZIP   := build/Captr-$(TAG).zip
 INSTALL_DIR := /Applications
 INSTALLED   := $(INSTALL_DIR)/$(APP).app
 
-TEST_SRC := tests/CPTests.m src/CPCaptureEngine.m src/CPExporter.m src/CPMarkup.m src/CPCanvasView.m
+TEST_SRC := tests/CPTests.m src/CPCaptureEngine.m src/CPExporter.m src/CPMarkup.m src/CPCanvasView.m \
+            src/CPClipboardHistory.m
 
 all: app
 

@@ -8,6 +8,8 @@
 #import "CPEditorWindowController.h"
 #import "CPPreferencesController.h"
 #import "CPHotKeyRecorder.h"
+#import "CPClipboardHistory.h"
+#import "CPHistoryPanelController.h"
 #import <Carbon/Carbon.h>
 
 @interface CPAppDelegate () <NSMenuDelegate>
@@ -16,6 +18,9 @@
 @property (nonatomic, strong) CPOverlayController *overlay;
 @property (nonatomic, strong) NSMutableArray<CPEditorWindowController *> *editors;
 @property (nonatomic, strong) CPPreferencesController *preferences;
+@property (nonatomic, strong) CPHistoryPanelController *historyPanel;
+@property (nonatomic, strong) NSMenu *historyMenu;
+@property (nonatomic, strong) NSDateFormatter *timeFormatter;
 @end
 
 @implementation CPAppDelegate
@@ -50,6 +55,11 @@
     [self addCaptureItem:menu title:@"Capture Full Screen" action:@selector(captureFullScreen:)
                  codeKey:CPDefaultsFullScreenHotKeyCode modsKey:CPDefaultsFullScreenHotKeyMods];
     [menu addItem:[NSMenuItem separatorItem]];
+    NSMenuItem *historyItem = [[NSMenuItem alloc] initWithTitle:@"Clipboard History" action:nil keyEquivalent:@""];
+    self.historyMenu = [[NSMenu alloc] initWithTitle:@"Clipboard History"];
+    self.historyMenu.delegate = self; // rebuilt in menuNeedsUpdate:
+    historyItem.submenu = self.historyMenu;
+    [menu addItem:historyItem];
     [self addItem:menu title:@"Open Screenshots Folder" action:@selector(openFolder:) key:@"" mods:0];
     [self addItem:menu title:@"Settings…" action:@selector(openPreferences:) key:@"," mods:NSEventModifierFlagCommand];
     [menu addItem:[NSMenuItem separatorItem]];
@@ -70,15 +80,65 @@
 
 // Refresh the displayed shortcut on each capture item before the menu opens.
 - (void)menuNeedsUpdate:(NSMenu *)menu {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    if (menu == self.historyMenu) { [self rebuildHistoryMenu]; return; }
     for (NSMenuItem *item in menu.itemArray) {
         NSArray *keys = item.representedObject;
         if (![keys isKindOfClass:[NSArray class]] || keys.count != 2) continue;
-        uint32_t code = (uint32_t)[ud integerForKey:keys[0]];
-        uint32_t mods = (uint32_t)[ud integerForKey:keys[1]];
-        item.keyEquivalent = mods ? [[CPHotKeyRecorder keyStringForKeyCode:code] lowercaseString] : @"";
-        item.keyEquivalentModifierMask = [self nsModifiersFromCarbon:mods];
+        [self showShortcutFromCodeKey:keys[0] modsKey:keys[1] onItem:item];
     }
+}
+
+- (void)showShortcutFromCodeKey:(NSString *)codeKey modsKey:(NSString *)modsKey onItem:(NSMenuItem *)item {
+    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    uint32_t code = (uint32_t)[ud integerForKey:codeKey];
+    uint32_t mods = (uint32_t)[ud integerForKey:modsKey];
+    item.keyEquivalent = mods ? [[CPHotKeyRecorder keyStringForKeyCode:code] lowercaseString] : @"";
+    item.keyEquivalentModifierMask = [self nsModifiersFromCarbon:mods];
+}
+
+// "Show Clipboard History…", then the copied images (newest first), then Clear.
+- (void)rebuildHistoryMenu {
+    NSMenu *menu = self.historyMenu;
+    [menu removeAllItems];
+
+    NSMenuItem *show = [[NSMenuItem alloc] initWithTitle:@"Show Clipboard History…"
+                                                  action:@selector(showClipboardHistory:) keyEquivalent:@""];
+    show.target = self;
+    [self showShortcutFromCodeKey:CPDefaultsHistoryHotKeyCode modsKey:CPDefaultsHistoryHotKeyMods onItem:show];
+    [menu addItem:show];
+    [menu addItem:[NSMenuItem separatorItem]];
+
+    NSArray<CPClipboardEntry *> *entries = [CPClipboardHistory sharedHistory].entries;
+    if (entries.count == 0) {
+        NSMenuItem *none = [[NSMenuItem alloc] initWithTitle:@"No images copied yet" action:nil keyEquivalent:@""];
+        none.enabled = NO;
+        [menu addItem:none];
+    }
+    if (!self.timeFormatter) {
+        self.timeFormatter = [[NSDateFormatter alloc] init];
+        self.timeFormatter.dateStyle = NSDateFormatterNoStyle;
+        self.timeFormatter.timeStyle = NSDateFormatterMediumStyle;
+    }
+    for (CPClipboardEntry *e in entries) {
+        NSString *title = [NSString stringWithFormat:@"%d × %d — %@", (int)e.pixelSize.width,
+                           (int)e.pixelSize.height, [self.timeFormatter stringFromDate:e.date]];
+        NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title action:@selector(copyHistoryEntry:)
+                                               keyEquivalent:@""];
+        item.target = self;
+        item.representedObject = e;
+        NSImage *icon = [e.thumbnail copy];
+        CGFloat scale = MIN(48.0 / icon.size.width, 32.0 / icon.size.height);
+        icon.size = NSMakeSize(round(icon.size.width * scale), round(icon.size.height * scale));
+        item.image = icon;
+        [menu addItem:item];
+    }
+
+    [menu addItem:[NSMenuItem separatorItem]];
+    NSMenuItem *clear = [[NSMenuItem alloc] initWithTitle:@"Clear History"
+                                                   action:(entries.count ? @selector(clearClipboardHistory:) : nil)
+                                            keyEquivalent:@""];
+    clear.target = self;
+    [menu addItem:clear];
 }
 
 - (NSEventModifierFlags)nsModifiersFromCarbon:(uint32_t)mods {
@@ -112,6 +172,8 @@
                         handler:^{ [ws captureWindow:nil]; }];
     [self registerHotKeyCodeKey:CPDefaultsFullScreenHotKeyCode modsKey:CPDefaultsFullScreenHotKeyMods
                         handler:^{ [ws captureFullScreen:nil]; }];
+    [self registerHotKeyCodeKey:CPDefaultsHistoryHotKeyCode modsKey:CPDefaultsHistoryHotKeyMods
+                        handler:^{ [ws showClipboardHistory:nil]; }];
 }
 
 - (void)registerHotKeyCodeKey:(NSString *)codeKey modsKey:(NSString *)modsKey handler:(void (^)(void))handler {
@@ -206,6 +268,22 @@
     }
     CGImageRelease(image);
 }
+
+#pragma mark - Clipboard history
+
+- (void)showClipboardHistory:(id)sender {
+    if (!self.historyPanel) self.historyPanel = [[CPHistoryPanelController alloc] init];
+    [self.historyPanel toggle];
+}
+
+- (void)copyHistoryEntry:(NSMenuItem *)sender {
+    CPClipboardEntry *entry = sender.representedObject;
+    if ([entry isKindOfClass:[CPClipboardEntry class]]) {
+        [[CPClipboardHistory sharedHistory] copyEntryToPasteboard:entry];
+    }
+}
+
+- (void)clearClipboardHistory:(id)sender { [[CPClipboardHistory sharedHistory] clear]; }
 
 #pragma mark - Other menu actions
 

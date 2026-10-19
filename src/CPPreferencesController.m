@@ -23,14 +23,14 @@ static const CGFloat kCtrlX   = 200;   // kMargin + kLabelW + 10
 
 - (instancetype)init {
     NSWindow *window = [[NSWindow alloc]
-        initWithContentRect:NSMakeRect(0, 0, kWidth, 372)
+        initWithContentRect:NSMakeRect(0, 0, kWidth, 404)
                   styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable)
                     backing:NSBackingStoreBuffered defer:NO];
     window.title = @"Captr Settings";
     window.releasedWhenClosed = NO;
 
     if ((self = [super initWithWindow:window])) {
-        CPFlippedView *content = [[CPFlippedView alloc] initWithFrame:NSMakeRect(0, 0, kWidth, 372)];
+        CPFlippedView *content = [[CPFlippedView alloc] initWithFrame:NSMakeRect(0, 0, kWidth, 404)];
         window.contentView = content;
         [self buildUIInto:content];
     }
@@ -56,32 +56,34 @@ static const CGFloat kCtrlX   = 200;   // kMargin + kLabelW + 10
                  codeKey:CPDefaultsWindowHotKeyCode modsKey:CPDefaultsWindowHotKeyMods];
     [self addRecorderRow:@"Capture Full Screen" y:108 into:content
                  codeKey:CPDefaultsFullScreenHotKeyCode modsKey:CPDefaultsFullScreenHotKeyMods];
+    [self addRecorderRow:@"Clipboard History" y:140 into:content
+                 codeKey:CPDefaultsHistoryHotKeyCode modsKey:CPDefaultsHistoryHotKeyMods];
 
-    [self addSectionHeader:@"General" y:150 into:content];
-    [self addCheckbox:@"Open editor after capture" y:178 key:CPDefaultsOpenEditor into:content];
-    [self addCheckbox:@"Copy to clipboard" y:206 key:CPDefaultsCopyToClipboard into:content];
-    [self addCheckbox:@"Save to file" y:234 key:CPDefaultsSaveToFile into:content];
+    [self addSectionHeader:@"General" y:182 into:content];
+    [self addCheckbox:@"Open editor after capture" y:210 key:CPDefaultsOpenEditor into:content];
+    [self addCheckbox:@"Copy to clipboard" y:238 key:CPDefaultsCopyToClipboard into:content];
+    [self addCheckbox:@"Save to file" y:266 key:CPDefaultsSaveToFile into:content];
 
     // Format popup.
-    [self addLabel:@"Format:" y:266 into:content];
-    NSPopUpButton *popup = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(kCtrlX, 264, 100, 26)];
+    [self addLabel:@"Format:" y:298 into:content];
+    NSPopUpButton *popup = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(kCtrlX, 296, 100, 26)];
     [popup addItemsWithTitles:@[@"PNG", @"JPG"]];
     [popup selectItemWithTitle:[[ud stringForKey:CPDefaultsImageFormat] uppercaseString] ?: @"PNG"];
     popup.target = self; popup.action = @selector(formatChanged:);
     [content addSubview:popup];
 
     // Save location.
-    [self addLabel:@"Save to:" y:298 into:content];
-    self.pathLabel = [self makePlainLabel:[self prettyPath] frame:NSMakeRect(kCtrlX, 300, 170, 20)];
+    [self addLabel:@"Save to:" y:330 into:content];
+    self.pathLabel = [self makePlainLabel:[self prettyPath] frame:NSMakeRect(kCtrlX, 332, 170, 20)];
     self.pathLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
     self.pathLabel.toolTip = [ud stringForKey:CPDefaultsSaveDirectory];
     [content addSubview:self.pathLabel];
-    NSButton *choose = [[NSButton alloc] initWithFrame:NSMakeRect(kWidth - kMargin - 80, 296, 80, 26)];
+    NSButton *choose = [[NSButton alloc] initWithFrame:NSMakeRect(kWidth - kMargin - 80, 328, 80, 26)];
     choose.title = @"Choose…"; choose.bezelStyle = NSBezelStyleRounded;
     choose.target = self; choose.action = @selector(chooseFolder:);
     [content addSubview:choose];
 
-    [self addCheckbox:@"Play sound after capture" y:334 key:CPDefaultsPlaySound into:content];
+    [self addCheckbox:@"Play sound after capture" y:366 key:CPDefaultsPlaySound into:content];
 }
 
 - (void)addSectionHeader:(NSString *)title y:(CGFloat)y into:(NSView *)content {

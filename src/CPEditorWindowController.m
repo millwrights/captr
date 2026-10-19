@@ -165,12 +165,14 @@ static const NSInteger kBarToolCount = 12;
     x += 34;
 
     // --- Actions, right-aligned. Two groups split by a divider:
-    //     edit (Undo · Redo · Delete)  |  output (Copy · Save · Close).
+    //     edit (Undo · Redo · Delete)  |  output (Copy · Copy & Close · Save · Close).
     //     Undo/Redo also bind ⌘Z / ⇧⌘Z (no Edit menu exists in this agent app).
     CGFloat rx = width - 16;
     rx = [self addButton:@"Close" symbol:@"xmark" action:@selector(closeEditor:)
                      key:@"" mask:0 rightEdge:rx inBar:bar cy:cy];
     rx = [self addButton:@"Save" symbol:@"square.and.arrow.down" action:@selector(saveImage:)
+                     key:@"" mask:0 rightEdge:rx inBar:bar cy:cy];
+    rx = [self addButton:@"Copy & Close" symbol:@"doc.on.clipboard" action:@selector(copyAndClose:)
                      key:@"" mask:0 rightEdge:rx inBar:bar cy:cy];
     rx = [self addButton:@"Copy" symbol:@"doc.on.doc" action:@selector(copyImage:)
                      key:@"" mask:0 rightEdge:rx inBar:bar cy:cy];
@@ -263,6 +265,15 @@ static const NSInteger kBarToolCount = 12;
 - (void)copyImage:(id)sender {
     CGImageRef img = [self.canvas newFlattenedImage];
     if (img) { [CPExporter copyImageToPasteboard:img]; CGImageRelease(img); }
+}
+
+// Copy is the "done" action here — close the editor once it's on the clipboard.
+- (void)copyAndClose:(id)sender {
+    CGImageRef img = [self.canvas newFlattenedImage];
+    if (!img) return;
+    [CPExporter copyImageToPasteboard:img];
+    CGImageRelease(img);
+    [self.window performClose:nil];
 }
 
 - (void)saveImage:(id)sender {

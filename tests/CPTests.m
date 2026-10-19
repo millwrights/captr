@@ -6,6 +6,7 @@
 #import "CPExporter.h"
 #import "CPMarkup.h"
 #import "CPCanvasView.h"
+#import "CPClipboardHistory.h"
 
 static int gFailures = 0;
 
@@ -155,6 +156,27 @@ static void testUndoManager(void) {
     CGImageRelease(base);
 }
 
+static void testClipboardHistory(void) {
+    fprintf(stderr, "CPClipboardHistory:\n");
+    CPClipboardHistory *h = [[CPClipboardHistory alloc] init];
+    h.maxEntries = 3;
+    CGImageRef img = makeQuadrantImage();
+    CHECK(h.entries.count == 0, "starts empty");
+    [h addImage:NULL];
+    CHECK(h.entries.count == 0, "ignores NULL images");
+    for (int i = 0; i < 5; i++) [h addImage:img];
+    CHECK(h.entries.count == 3, "drops oldest entries beyond maxEntries");
+    CPClipboardEntry *first = h.entries.firstObject;
+    CHECK(NSEqualSizes(first.pixelSize, NSMakeSize(CGImageGetWidth(img), CGImageGetHeight(img))),
+          "entry records the image's pixel size");
+    CHECK(first.thumbnail.size.width > 0, "entry has a thumbnail");
+    [h removeEntry:first];
+    CHECK(h.entries.count == 2 && ![h.entries containsObject:first], "removeEntry drops just that entry");
+    [h clear];
+    CHECK(h.entries.count == 0, "clear empties the history");
+    CGImageRelease(img);
+}
+
 int main(int argc, const char *argv[]) {
     (void)argc; (void)argv;
     @autoreleasepool {
@@ -164,6 +186,7 @@ int main(int argc, const char *argv[]) {
         testAnnotation();
         testExportOrientation();
         testUndoManager();
+        testClipboardHistory();
         if (gFailures == 0) { fprintf(stderr, "\nAll tests passed.\n"); return 0; }
         fprintf(stderr, "\n%d test(s) failed.\n", gFailures);
         return 1;

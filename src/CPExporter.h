@@ -10,7 +10,8 @@ NSString *CPScreenshotFileName(NSDate *date, NSString *extension);
 
 @interface CPExporter : NSObject
 
-/// Copy an image onto the general pasteboard as TIFF/PNG.
+/// Copy an image onto the general pasteboard as TIFF, and record it in the
+/// clipboard history.
 + (void)copyImageToPasteboard:(CGImageRef)image;
 
 /// Write an image to `directory` using the given format (@"png"/@"jpg").

@@ -17,6 +17,8 @@ static NSString *const CPDefaultsWindowHotKeyCode     = @"CPWindowHotKeyCode";
 static NSString *const CPDefaultsWindowHotKeyMods     = @"CPWindowHotKeyMods";
 static NSString *const CPDefaultsFullScreenHotKeyCode = @"CPFullScreenHotKeyCode";
 static NSString *const CPDefaultsFullScreenHotKeyMods = @"CPFullScreenHotKeyMods";
+static NSString *const CPDefaultsHistoryHotKeyCode    = @"CPHistoryHotKeyCode";
+static NSString *const CPDefaultsHistoryHotKeyMods    = @"CPHistoryHotKeyMods";
 
 // Registers factory defaults. Call once at launch before reading any value.
 static inline void CPRegisterDefaults(void) {
@@ -36,5 +38,8 @@ static inline void CPRegisterDefaults(void) {
         CPDefaultsWindowHotKeyMods:     @(controlKey | shiftKey | cmdKey),
         CPDefaultsFullScreenHotKeyCode: @(kVK_ANSI_F),
         CPDefaultsFullScreenHotKeyMods: @(controlKey | shiftKey | cmdKey),
+        // Clipboard history panel: ⇧⌘I.
+        CPDefaultsHistoryHotKeyCode:    @(kVK_ANSI_I),
+        CPDefaultsHistoryHotKeyMods:    @(shiftKey | cmdKey),
     }];
 }
